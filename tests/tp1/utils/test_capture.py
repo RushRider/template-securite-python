@@ -1,88 +1,78 @@
-from unittest.mock import patch
-from src.tp1.utils.capture import Capture
+from scapy.all import ARP, Ether, ICMP, IP, Raw, TCP, UDP, wrpcap
+from tp1.utils.capture import Capture
 
 
-def test_capture_init():
-    # When
-    capture = Capture()
-
-    # Then
-    assert capture.interface == ""
-    assert capture.summary == ""
+def _make_capture(tmp_path, paquets):
+    path = tmp_path / "test.pcap"
+    wrpcap(str(path), paquets)
+    return Capture(str(path))
 
 
-def test_given_capture_when_capture_traffic_then_interface_is_set():
-    # Given
-    capture = Capture()
+def test_count_protocols(tmp_path):
+    paquets = [
+        Ether() / IP() / TCP(dport=80) / Raw(load=b"hello"),
+        Ether() / IP() / UDP(),
+        Ether() / IP() / ICMP(),
+    ]
+    capture = _make_capture(tmp_path, paquets)
+    capture.count_protocols()
 
-    # When
-    capture.capture_traffic()
-
-    # Then
-    # This is a minimal test since the method doesn't do much yet
-    assert capture.interface == ""
-
-
-def test_sort_network_protocols():
-    # Given
-    capture = Capture()
-
-    # When
-    result = capture.sort_network_protocols()
-
-    # Then
-    assert result == ""  # Method currently returns None
+    protocols = capture.get_protocols()
+    assert protocols["TCP"] == 1
+    assert protocols["HTTP"] == 1
+    assert "UDP" in protocols
 
 
-def test_get_all_protocols():
-    # Given
-    capture = Capture()
+def test_detect_arp_spoofing(tmp_path):
+    paquets = [Ether() / ARP(psrc="10.0.0.1", hwsrc="aa:aa:aa:aa:aa:aa"), Ether() / ARP(psrc="10.0.0.1", hwsrc="bb:bb:bb:bb:bb:bb")]
+    capture = _make_capture(tmp_path, paquets)
+    capture.detect_arp_spoofing()
 
-    # When
-    result = capture.get_all_protocols()
-
-    # Then
-    assert result == ""  # Method currently returns None
+    types = [a["type"] for a in capture.get_attacks()]
+    assert "arp_spoofing" in types
 
 
-def test_analyse():
-    # Given
-    capture = Capture()
+def test_detect_port_scan(tmp_path):
+    paquets = [
+        Ether() / IP(src="10.0.0.9") / TCP(dport=port, flags="S")
+        for port in range(1, 26)
+    ]
+    capture = _make_capture(tmp_path, paquets)
+    capture.detect_port_scan()
 
-    # When
-    with (
-        patch.object(capture, "get_all_protocols") as mock_get_protocols,
-        patch.object(capture, "sort_network_protocols") as mock_sort,
-        patch.object(capture, "_gen_summary") as mock_gen_summary,
-    ):
-        mock_gen_summary.return_value = "Test summary"
-        capture.analyse("tcp")
-
-    # Then
-    mock_get_protocols.assert_called_once()
-    mock_sort.assert_called_once()
-    mock_gen_summary.assert_called_once()
-    assert capture.summary == "Test summary"
+    attaques = capture.get_attacks()
+    assert any(a["type"] == "port_scan" and a["attacker"] == "10.0.0.9" for a in attaques)
 
 
-def test_get_summary():
-    # Given
-    capture = Capture()
-    capture.summary = "Test summary"
+def test_detect_injection(tmp_path):
+    paquets = [
+        Ether() / IP(src="10.0.0.9") / TCP(dport=80) / Raw(load=b"GET /?id=1 or 1=1 HTTP/1.1"),
+    ]
+    capture = _make_capture(tmp_path, paquets)
+    capture.detect_injection()
 
-    # When
-    result = capture.get_summary()
-
-    # Then
-    assert result == "Test summary"
+    types = [a["type"] for a in capture.get_attacks()]
+    assert "sql_injection" in types
 
 
-def test_gen_summary():
-    # Given
-    capture = Capture()
+def test_find_flag(tmp_path):
+    paquets = [
+        Ether() / IP() / TCP(dport=80) / Raw(load=b"GET /?x=ESGI{test} HTTP/1.1"),
+    ]
+    capture = _make_capture(tmp_path, paquets)
+    capture.find_flag()
 
-    # When
-    result = capture._gen_summary()
+    assert capture.get_flag() == "ESGI{test}"
 
-    # Then
-    assert result == ""  # Method currently returns empty string
+
+def test_analyse(tmp_path):
+    paquets = [
+        Ether() / ARP(psrc="10.0.0.1", hwsrc="aa:aa:aa:aa:aa:aa"),
+        Ether() / ARP(psrc="10.0.0.1", hwsrc="bb:bb:bb:bb:bb:bb"),
+        Ether() / IP() / TCP(dport=80) / Raw(load=b"ESGI{abc}"),
+    ]
+    capture = _make_capture(tmp_path, paquets)
+    capture.analyse()
+
+    assert capture.get_protocols()
+    assert capture.get_flag() == "ESGI{abc}"
