@@ -76,7 +76,7 @@ class Capture:
         compteur = Counter()    
         couches = {
             "Ethernet": Ether, "ARP": ARP, "IP": IP,
-            "TCP": TCP, "UDP": UDP, "ICMP": ICMP, "DNS": DNS,
+            "TCP": TCP, "UDP": UDP, "ICMP": ICMP, "DNS": DNS, "HTTP": HTTP
         }
         for pkt in self.packets:
             for nom, couche in couches.items():
