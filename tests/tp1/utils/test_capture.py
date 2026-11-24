@@ -26,13 +26,12 @@ def test_count_protocols(tmp_path):
 def test_detect_arp_spoofing(tmp_path):
     paquets = [Ether() / ARP(psrc="10.0.0.1", hwsrc="aa:aa:aa:aa:aa:aa"), Ether() / ARP(psrc="10.0.0.1", hwsrc="bb:bb:bb:bb:bb:bb")]
     capture = _make_capture(tmp_path, paquets)
-    capture.detect_arp_spoofing()
-
+    capture.detect_arp_spoof()
     types = [a["type"] for a in capture.get_attacks()]
     assert "arp_spoofing" in types
 
 
-def test_detect_port_scan(tmp_path):
+def test_detect_port_scan(tmp_path):    
     paquets = [
         Ether() / IP(src="10.0.0.9") / TCP(dport=port, flags="S")
         for port in range(1, 26)
@@ -60,7 +59,7 @@ def test_find_flag(tmp_path):
         Ether() / IP() / TCP(dport=80) / Raw(load=b"GET /?x=ESGI{test} HTTP/1.1"),
     ]
     capture = _make_capture(tmp_path, paquets)
-    capture.find_flag()
+    capture.detect_flag()
 
     assert capture.get_flag() == "ESGI{test}"
 
