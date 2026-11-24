@@ -1,60 +1,58 @@
-from src.tp1.utils.lib import choose_interface
+from collections import Counter
+
+from scapy.all import rdpcap, Ether, ARP, IP, TCP, UDP, ICMP
+from scapy.layers.dns import DNS
+
 from tp1.utils.config import logger
 
 
 class Capture:
-    def __init__(self) -> None:
-        self.interface = choose_interface()
-        self.summary = ""
+    def __init__(self, pcap_path: str):
+        logger.info(f"Lecture du pcap {pcap_path}")
+        self.packets = rdpcap(pcap_path)
+        self.protocols: dict[str, int] = {}
+        self.attacks: list[dict] = []
+        self.flag = ""
 
-    def capture_traffic(self) -> None:
-        """
-        Capture network traffic from an interface
-        """
-        interface = self.interface
-        logger.info(f"Capture traffic from interface {interface}")
+    def analyse(self):
+        self.count_protocols()
+        self.detect_arp_spoof()
 
-    def sort_network_protocols(self) -> str:
-        """
-        Sort and return all captured network protocols
-        """
-        return ""
+    def detect_arp_spoof(self):
 
-    def get_all_protocols(self) -> str:
-        """
-        Return all protocols captured with total packets number
-        """
-        return ""
+        # detection de l'arp spoofing
 
-    def analyse(self, protocols: str) -> None:
-        """
-        Analyse all captured data and return statement
-        Si un tra c est illégitime (exemple : Injection SQL, ARP
-        Spoo ng, etc)
-        a Noter la tentative d'attaque.
-        b Relever le protocole ainsi que l'adresse réseau/physique
-        de l'attaquant.
-        c (FACULTATIF) Opérer le blocage de la machine
-        attaquante.
-        Sinon a cher que tout va bien
-        """
-        all_protocols = self.get_all_protocols()
-        sort = self.sort_network_protocols()
-        logger.debug(f"All protocols: {all_protocols}")
-        logger.debug(f"Sorted protocols: {sort}")
+        ip_mac = {}
 
-        self.summary = self._gen_summary()
+        for pkt in self.packets:
+            if pkt.haslayer(ARP):
+                ip = pkt[ARP].psrc
+                mac = pkt[ARP].hwsrc
+                ip_mac.setdefault(ip, set()).add(mac)
 
-    def get_summary(self) -> str:
-        """
-        Return summary
-        :return:
-        """
-        return self.summary
+        for ip, macs in ip_mac.items():
+            if len(macs) >= 2:
+                for mac in macs:
+                    self.attacks.append({"type": "arp_spoofing", "attacker": mac})
 
-    def _gen_summary(self) -> str:
-        """
-        Generate summary
-        """
-        summary = ""
-        return summary
+
+    def count_protocols(self):
+        compteur = Counter()    
+        couches = {
+            "Ethernet": Ether, "ARP": ARP, "IP": IP,
+            "TCP": TCP, "UDP": UDP, "ICMP": ICMP, "DNS": DNS,
+        }
+        for pkt in self.packets:
+            for nom, couche in couches.items():
+                if pkt.haslayer(couche):
+                    compteur[nom] += 1
+        self.protocols = dict(compteur)
+
+    def get_protocols(self) -> dict:
+        return self.protocols
+
+    def get_attacks(self) -> list:
+        return self.attacks
+
+    def get_flag(self) -> str:
+        return self.flag
