@@ -1,9 +1,9 @@
 from collections import Counter
-
 from scapy.all import rdpcap, Ether, ARP, IP, TCP, UDP, ICMP
 from scapy.layers.dns import DNS
-
+from scapy.all import Raw
 from tp1.utils.config import logger
+from urllib.parse import unquote_plus
 
 
 class Capture:
@@ -18,6 +18,7 @@ class Capture:
         self.count_protocols()
         self.detect_arp_spoof()
         self.detect_port_scan()
+        self.detect_injection()
 
     def detect_arp_spoof(self):
 
@@ -53,6 +54,22 @@ class Capture:
             if len(ports) >= 20:
                 self.attacks.append({"type": "port_scan", "attacker": ip})
 
+
+    def detect_injection(self):
+        patterns = ["or 1=1", "union select", "' or '1'='1", "or '1'='1"]
+        vu = set()
+
+        for pkt in self.packets:
+            if (pkt.haslayer(TCP) and pkt.haslayer(Raw) and pkt[TCP].dport == 80):
+                ip = pkt[IP].src
+                text = pkt[Raw].load.decode(errors="ignore")
+                text = unquote_plus(text)
+                text = text.lower()
+
+                for pattern in patterns:
+                    if pattern in text and ip not in vu:
+                        self.attacks.append({"type": "sql_injection", "attacker": ip})
+                        vu.add(ip)
 
 
     def count_protocols(self):
