@@ -4,6 +4,7 @@ from scapy.layers.dns import DNS
 from scapy.all import Raw
 from tp1.utils.config import logger
 from urllib.parse import unquote_plus
+import re
 
 
 class Capture:
@@ -19,6 +20,7 @@ class Capture:
         self.detect_arp_spoof()
         self.detect_port_scan()
         self.detect_injection()
+        self.detect_flag()
 
     def detect_arp_spoof(self):
 
@@ -72,16 +74,32 @@ class Capture:
                         vu.add(ip)
 
 
+    def detect_flag(self):
+
+        for pkt in self.packets:
+            if (pkt.haslayer(Raw)):
+                text = pkt[Raw].load.decode(errors="ignore")
+                text = unquote_plus(text)
+
+                found = re.search(r"ESGI\{[^}]+\}", text)
+
+                if found:
+                    self.flag = found.group(0)
+                    return
+
+
     def count_protocols(self):
         compteur = Counter()    
         couches = {
             "Ethernet": Ether, "ARP": ARP, "IP": IP,
-            "TCP": TCP, "UDP": UDP, "ICMP": ICMP, "DNS": DNS, "HTTP": HTTP
+            "TCP": TCP, "UDP": UDP, "ICMP": ICMP, "DNS": DNS
         }
         for pkt in self.packets:
             for nom, couche in couches.items():
                 if pkt.haslayer(couche):
                     compteur[nom] += 1
+                if pkt.haslayer(TCP) and (pkt[TCP].dport == 80 or pkt[TCP].sport == 80):
+                    compteur["HTTP"] += 1
         self.protocols = dict(compteur)
 
     def get_protocols(self) -> dict:
