@@ -98,8 +98,8 @@ class Capture:
             for nom, couche in couches.items():
                 if pkt.haslayer(couche):
                     compteur[nom] += 1
-                if pkt.haslayer(TCP) and (pkt[TCP].dport == 80 or pkt[TCP].sport == 80):
-                    compteur["HTTP"] += 1
+            if pkt.haslayer(TCP) and (pkt[TCP].dport == 80 or pkt[TCP].sport == 80):
+                compteur["HTTP"] += 1
         self.protocols = dict(compteur)
 
     def get_protocols(self) -> dict:
