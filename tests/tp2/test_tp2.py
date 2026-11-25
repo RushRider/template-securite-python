@@ -3,6 +3,7 @@ import json
 from tp2.utils.report import Report
 from tp2.utils.sample import Sample
 from tp2.utils.scanner import YaraScanner
+from tp2.utils.triage import Triage
 
 
 def _sample(tmp_path, data: bytes) -> Sample:
@@ -49,3 +50,16 @@ def test_generate_json(tmp_path):
     out = tmp_path / "res.json"
     Report({"flag": "ESGI{x}"}).generate_json(str(out))
     assert json.loads(out.read_text())["flag"] == "ESGI{x}"
+
+def test_triage_run(tmp_path):
+    echantillon = tmp_path / "sample.bin"
+    echantillon.write_bytes(b"FLAG=ESGI{flag2test} 185.10.20.30")
+    rules = tmp_path / "rules"
+    rules.mkdir()
+
+    triage = Triage(str(echantillon), "openrouter", str(rules))
+    result = triage.run()
+
+    assert result["flag"] == "ESGI{flag2test}"
+    assert len(result["sha256"]) == 64
+    assert "iocs" in result
