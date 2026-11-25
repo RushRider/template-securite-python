@@ -16,7 +16,8 @@ class Triage:
         logger.info(f"Triage de {self.path} ({len(sample.data)} octets)")
 
         meta = sample.get_file_metadata()
-        # iocs = sample.extract_iocs()
+        iocs = sample.extract_iocs()
+        flag = sample.extract_flag()
         # bininfo = sample.parse_binary()
         # matches = self.scanner.scan(sample.data)
         # summary = json.dumps({"meta": meta, "iocs": iocs, "yara": matches, "bin": bininfo})
@@ -28,18 +29,12 @@ class Triage:
             "size": meta["size"],
             "entropy": meta["entropy"],
             "file_type": meta["file_type"],
-            "iocs": {
-                "domains": [],
-                "ips": [],
-                "urls": [],
-                "mutex": [],
-                "registry": [],
-            },
+            "iocs": iocs,
             "imports": [],
             "yara_matches": [],
             "family_guess": "",
             "mitre_attack": [],
             "llm_summary": "",
             "score": 0,
-            "flag": "",
+            "flag": flag
         }
