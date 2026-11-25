@@ -19,7 +19,7 @@ def main() -> None:
         if not file.is_file():
             continue
 
-        triage = Triage(str(file), args.llm)
+        triage = Triage(str(file), args.llm, args.rules)
         result = triage.run()
 
         report_name = Path(args.out) / f"{file.name}.triage.json"

@@ -39,3 +39,26 @@ rule Keylogger
     condition:
         any of them
 }
+
+rule C2_HTTP_Callback
+{
+    meta:
+        author = "moi"
+        description = "connexion a un serveur C2"
+    strings:
+        $dom = ".example.test" nocase
+        $gate = "gate.php" nocase
+    condition:
+        any of them
+}
+
+rule Registry_Run_Persistence
+{
+    meta:
+        author = "moi"
+        description = "detection de persistance"
+    strings:
+        $run = "CurrentVersion\\Run" nocase
+    condition:
+        $run
+}

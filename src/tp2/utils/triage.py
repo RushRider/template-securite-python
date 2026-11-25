@@ -5,10 +5,10 @@ from tp2.utils.scanner import YaraScanner
 
 
 class Triage:
-    def __init__(self, path: str, backend: str) -> None:
+    def __init__(self, path: str, backend: str, rules: str) -> None:
         self.path = path
         self.backend = backend
-        self.scanner = YaraScanner()
+        self.scanner = YaraScanner(rules)
         self.llm = LLMTriage(backend)
 
     def run(self) -> dict:
@@ -19,7 +19,7 @@ class Triage:
         iocs = sample.extract_iocs()
         flag = sample.extract_flag()
         # bininfo = sample.parse_binary()
-        # matches = self.scanner.scan(sample.data)
+        matches = self.scanner.scan(sample.data)
         # summary = json.dumps({"meta": meta, "iocs": iocs, "yara": matches, "bin": bininfo})
         # verdict = self.llm.triage(summary)
 
@@ -31,7 +31,7 @@ class Triage:
             "file_type": meta["file_type"],
             "iocs": iocs,
             "imports": [],
-            "yara_matches": [],
+            "yara_matches": matches,
             "family_guess": "",
             "mitre_attack": [],
             "llm_summary": "",
