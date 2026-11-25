@@ -75,17 +75,15 @@ class Capture:
 
 
     def detect_flag(self):
-
+        patterns = ["or 1=1", "union select", "' or '1'='1", "or '1'='1"]
         for pkt in self.packets:
-            if (pkt.haslayer(Raw)):
-                text = pkt[Raw].load.decode(errors="ignore")
-                text = unquote_plus(text)
-
-                found = re.search(r"ESGI\{[^}]+\}", text)
-
-                if found:
-                    self.flag = found.group(0)
-                    return
+            if pkt.haslayer(Raw):
+                raw = unquote_plus(pkt[Raw].load.decode(errors="ignore"))
+                if any(p in raw.lower() for p in patterns):
+                    found = re.search(r"ESGI\{[^}]+\}", raw)
+                    if found:
+                        self.flag = found.group(0)
+                        return
 
 
     def count_protocols(self):
