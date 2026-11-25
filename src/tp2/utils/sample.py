@@ -34,14 +34,14 @@ class Sample:
         chaine = re.findall(rb"[\x20-\x7e]{4,}", self.data)
         text = "\n".join(c.decode("ascii") for c in chaine)
 
-        # domains = re.findall(..., text)
+        domains = re.findall(r"(?:[a-z0-9-]+\.)+test\b", text)
         ips = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", text)
         urls = re.findall(r"https?://[^\s\"'<>]+", text)
         mutex = re.findall(r"(?:Global|Local)\\[^\s\"'<>]+", text)
         registry = re.findall(r"HK(?:LM|CU|CR|U|CC)\\[^\s\"'<>]+", text)
 
         return {
-            "domains": [],
+            "domains": domains,
             "ips": ips,
             "urls": urls,
             "mutex": mutex,
