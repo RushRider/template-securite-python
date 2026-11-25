@@ -68,7 +68,7 @@ def test_analyse(tmp_path):
     paquets = [
         Ether() / ARP(psrc="10.0.0.1", hwsrc="aa:aa:aa:aa:aa:aa"),
         Ether() / ARP(psrc="10.0.0.1", hwsrc="bb:bb:bb:bb:bb:bb"),
-        Ether() / IP() / TCP(dport=80) / Raw(load=b"ESGI{abc}"),
+        Ether() / IP() / TCP(dport=80) / Raw(load=b"GET /?u=admin' OR 1=1-- &token=ESGI{abc} HTTP/1.1"),
     ]
     capture = _make_capture(tmp_path, paquets)
     capture.analyse()
