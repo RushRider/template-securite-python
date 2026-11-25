@@ -59,7 +59,7 @@ def test_find_flag(tmp_path):
         Ether() / IP() / TCP(dport=80) / Raw(load=b"GET /?x=ESGI{test} HTTP/1.1"),
     ]
     capture = _make_capture(tmp_path, paquets)
-    capture.    capture.detect_flag()
+    capture.detect_flag()
 
     assert capture.get_flag() == "ESGI{test}"
 
