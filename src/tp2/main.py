@@ -22,8 +22,7 @@ def main() -> None:
         triage = Triage(str(file), args.llm)
         result = triage.run()
 
-        sha = result["sha256"]
-        report_name = Path(args.out) / f"{sha}.json"
+        report_name = Path(args.out) / f"{file.name}.triage.json"
 
         report = Report(result)
         report.generate_json(str(report_name))
