@@ -1,49 +1,31 @@
-from src.tp3.utils.captcha import Captcha
+import io
+from PIL import Image, ImageDraw
+from tp3.utils.captcha import Captcha
 
 
-def test_captcha_init():
-    # Given
-    url = "http://example.com/captcha"
+class _FakeSession:
+    def __init__(self, png: bytes) -> None:
+        self.png = png
 
-    # When
-    captcha = Captcha(url)
-
-    # Then
-    assert captcha.url == url
-    assert captcha.image == ""
-    assert captcha.value == ""
+    def get(self, url, timeout=5):
+        r = type("R", (), {})()
+        r.content = self.png
+        return r
 
 
-def test_solve():
-    # Given
-    captcha = Captcha("http://example.com/captcha")
-
-    # When
-    captcha.solve()
-
-    # Then
-    assert captcha.value == "FIXME"
+def _png(code: str) -> bytes:
+    img = Image.new("RGB", (220, 90), "white")
+    ImageDraw.Draw(img).text((25, 30), code, fill="black")
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+    return buf.getvalue()
 
 
-def test_capture():
-    # Given
-    captcha = Captcha("http://example.com/captcha")
+def test_captcha_solve(monkeypatch):
+    import tp3.utils.captcha as capmod
 
-    # When
+    monkeypatch.setattr(capmod.pytesseract, "image_to_string", lambda img, config="": "kxmtr\n")
+    captcha = Captcha(_FakeSession(_png("KXMTR")), "http://x/captcha.png")
     captcha.capture()
-
-    # Then
-    # This is a minimal test since the method doesn't do anything yet
-    assert captcha.image == ""
-
-
-def test_get_value():
-    # Given
-    captcha = Captcha("http://example.com/captcha")
-    captcha.value = "TEST123"
-
-    # When
-    result = captcha.get_value()
-
-    # Then
-    assert result == "TEST123"
+    captcha.solve()
+    assert captcha.get_value() == "KXMTR"
