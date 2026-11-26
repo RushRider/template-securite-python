@@ -1,23 +1,31 @@
 import io
-import pytesseract
-from PIL import Image
+from PIL import Image, ImageDraw
+from tp3.utils.captcha import Captcha
 
 
-class Captcha:
-    def __init__(self, session, url: str) -> None:
-        self.session = session
-        self.url = url
-        self.image = None
-        self.value = ""
+class _FakeSession:
+    def __init__(self, png: bytes) -> None:
+        self.png = png
 
-    def capture(self) -> None:
-        r = self.session.get(self.url, timeout=5)
-        self.image = Image.open(io.BytesIO(r.content)).convert("L")
+    def get(self, url, timeout=5):
+        r = type("R", (), {})()
+        r.content = self.png
+        return r
 
-    def solve(self) -> None:
-        bw = self.image.point(lambda p: 0 if p < 128 else 255)
-        config = "--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        self.value = pytesseract.image_to_string(bw, config=config).strip().upper()
 
-    def get_value(self) -> str:
-        return self.value
+def _png(code: str) -> bytes:
+    img = Image.new("RGB", (220, 90), "white")
+    ImageDraw.Draw(img).text((25, 30), code, fill="black")
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def test_captcha_solve(monkeypatch):
+    import tp3.utils.captcha as capmod
+    
+    monkeypatch.setattr(capmod.pytesseract, "image_to_string", lambda img, config="": "kxmtr\n")
+    captcha = Captcha(_FakeSession(_png("KXMTR")), "http://x/captcha.png")
+    captcha.capture()
+    captcha.solve()
+    assert captcha.get_value() == "KXMTR"
