@@ -1,0 +1,14 @@
+admin
+login
+panel
+dashboard
+internal
+internal-panel
+secret
+hidden
+private
+console
+manage
+backend
+portal
+staff
