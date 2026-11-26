@@ -22,10 +22,25 @@ def breach_web(target: str) -> tuple[str, int, bytes]:
         r = sess.post(panel, data={"captcha": captcha.get_value()}, timeout=5)
         if r.status_code == 200:
             data = r.json()
-            print(f"flag1: {data['flag1']}")
+            print(f"[+] FLAG1: {data['flag1']}")
             return data["host"], data["port"], bytes.fromhex(data["key"])
     raise RuntimeError("captcha pa passé")
+    
 
+
+def breach_network(host: str, port: int, key: bytes) -> str:
+    sock = socket.create_connection((host, port), timeout=10)
+    flux = sock.makefile("rb")
+    flux.readline()
+
+    while True:
+        ligne = flux.readline().strip()
+        if ligne.startswith(b"OK"):
+            return ligne.decode().split()[-1]
+        if ligne.startswith((b"WRONG", b"TIMEOUT")):
+            raise RuntimeError(ligne.decode())
+        token = _xor(base64.b64decode(ligne), key)
+        sock.sendall(token + b"\n")
 
 
 
@@ -34,10 +49,9 @@ def main() -> None:
     ap.add_argument("--target", default="http://127.0.0.1:8080")
     args = ap.parse_args()
 
-    logger.info("Starting TP3 - breach the target")
     host, port, key = breach_web(args.target)
     flag = breach_network(host, port, key)
-    logger.info(f"FLAG_FINAL: {flag}")
+    print(f"[+] FLAG_FINAL: {flag}")
 
 
 if __name__ == "__main__":
